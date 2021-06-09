@@ -34,29 +34,62 @@ const ItemController = (function () {
         },
         //TO gettotalCalories
         getTotalCalories: function () {
+            let totalCalories=0;
+            data.items.forEach(function (item) {
+                totalCalories+=item.calories;
+            });
             return totalCalories;
         },
         //To update total Calories after users updates an item
-        updateTotalCaloreis: function (operation) {
+        updateTotalCaloreis: function (operation, calories) {
             if (operation === 'add') {
-                totalCalories += 1;
+                totalCalories += calories;
             } else if (operation === 'remove') {
-                totalCalories--;
+                totalCalories -= calories;
             }
         },
         //    to Find an Element in data list using id
         findElementById: function (itemId) {
-            let found;
-            for (let item of data.items) {
+            let found = null;
+            data.items.forEach(function (item) {
                 if (item.id === itemId) {
+                    // console.log(`find by id method ${item.name}, ${item.id},${item.calories}`);
                     found = item;
                 }
-            }
+            });
+            // console.log(`find by id method ${found.name}, ${found.id},${found.calories}`);
+
             return found;
 
         },
-        setCurrentItem:function (item) {
-            data.current=item;
+        setCurrentItem: function (item) {
+            // console.log(`find by id method ${item.name}, ${item.id},${item.calories}`);
+            data.current = item;
+        },
+        //To update into Data
+        updateItem: function (updatedItem) {
+            totalCalories=0
+            //    Current item is already set when user clicked on edit icon
+            data.items.forEach(function (item) {
+                if (item.id === data.current.id) {
+                    item.name = updatedItem.name;
+                    item.calories = updatedItem.item;
+                }
+                totalCalories+=item.calories;
+            });
+        },
+        deleteItem : function (id) {
+            let indexOfelement=0;
+            data.items.forEach(function (item,index) {
+                if (item.id===id){
+                    indexOfelement=index;
+                }
+            });
+            data.items.splice(indexOfelement,1);
+            console.log(`Item at ${indexOfelement} is deleted`);
+        },
+        getCurrentItem:function (){
+            return data.current;
         }
 
     }
@@ -74,23 +107,32 @@ const Uicontroller = (function () {
         totalcalories: '.total-calories',
         updatebtn: '.update-btn',
         deletebtn: '.remove-btn',
-        backbtn: '.back-btn'
+        backbtn: '.back-btn',
+        clearbtn:'.clear-btn'
 
     }
 
     return {
         populateDataToUi: function (data) {
-            document.getElementById(UIElements.itemList).style.display = 'block';
-            let html = ``;
-            data.forEach(function (food) {
-                html += `<li class="collection-item" id="item-${food.id}">
+            if (data.length===0){
+                Uicontroller.hideList();
+                this.hideEditState();
+                this.clearFields();
+            }else {
+                this.hideEditState();
+                this.clearFields();
+                document.getElementById(UIElements.itemList).style.display = 'block';
+                let html = ``;
+                data.forEach(function (food) {
+                    html += `<li class="collection-item" id="item-${food.id}">
             <strong>${food.name} : </strong><em>${food.calories} calories</em>
             <a href="" class="secondary-content">
                 <i class="edit-item fa fa-pencil-alt"></i>
             </a>
         </li>`
-            });
-            document.getElementById(UIElements.itemList).innerHTML = html;
+                });
+                document.getElementById(UIElements.itemList).innerHTML = html;
+            }
         },
         //To get the elements from DOM
         getUiElements: function () {
@@ -100,7 +142,7 @@ const Uicontroller = (function () {
         getInputs: function () {
             return {
                 name: document.querySelector(UIElements.itemname).value,
-                item: document.querySelector(UIElements.calorieInput).value
+                item: parseInt(document.querySelector(UIElements.calorieInput).value)
             }
         },
         //clear fields after user enters the details
@@ -121,7 +163,7 @@ const Uicontroller = (function () {
         },
         //Hides update ,delete and back button in UI
         hideEditState: function () {
-            this.clearFields();
+            Uicontroller.clearFields();
             document.querySelector(UIElements.updatebtn).style.display = 'none';
             document.querySelector(UIElements.deletebtn).style.display = 'none';
             document.querySelector(UIElements.backbtn).style.display = 'none';
@@ -130,11 +172,11 @@ const Uicontroller = (function () {
         },
         //TO auto populate item details int input fields after user clicks on edit icon
         updateItem: function (item) {
-            document.querySelector(UIElements.itemname).value=item.name;
-            document.querySelector(UIElements.calorieInput).value=item.calories;
+            document.querySelector(UIElements.itemname).value = item.name;
+            document.querySelector(UIElements.calorieInput).value = item.calories;
         },
         //To show edit.remove buttons in ui after user clicks on edit button
-        showEditState: function (){
+        showEditState: function () {
             document.querySelector(UIElements.updatebtn).style.display = 'inline-block';
             document.querySelector(UIElements.deletebtn).style.display = 'inline-block';
             document.querySelector(UIElements.backbtn).style.display = 'inline-block';
@@ -153,11 +195,68 @@ const App = (function (uicontroller, itemcontroller) {
         //on clicking the add button(to add data to list)
         document.querySelector(elements.addBtn).addEventListener('click', addEntity);
         //Lister for edit even when user clicks on edit icon
-        document.getElementById(elements.itemList).addEventListener('click', updateElement);
+        document.getElementById(elements.itemList).addEventListener('click', handleEditIcon);
+        //    Listen for Update button when user clicks on update button
+        document.querySelector(elements.updatebtn).addEventListener('click', handleUpdateButton);
+    //    Listen for Back button when user clicks on back button
+        document.querySelector(elements.backbtn).addEventListener('click',uicontroller.hideEditState);
+    //    Listen for delete Item button
+        document.querySelector(elements.deletebtn).addEventListener('click',handleDeleteButton);
+    //    listen for clear all button
+        document.querySelector(elements.clearbtn).addEventListener('click',handleClearButton);
     }
 
 
-    const updateElement = function (event) {
+
+    //To handle clear al event lsitern when user clicks on clear button
+    const handleClearButton= function (event) {
+        itemcontroller.logData().items=[];
+        uicontroller.populateDataToUi(itemcontroller.logData().items);
+
+        const totalCalories = itemcontroller.getTotalCalories();
+        //Show total calories
+        uicontroller.showTotalCalories(totalCalories);
+        event.preventDefault();
+    }
+
+    //To handle update button after user clicks it(saving the data into data and then displaying the update data in the list)
+    const handleUpdateButton = function (event) {
+        //Get new values from inputs
+        const updatedItem = uicontroller.getInputs();
+        //To update item in the itemcontroller
+        itemcontroller.updateItem(updatedItem);
+        //Display the updated list;
+        uicontroller.populateDataToUi(itemcontroller.logData().items);
+
+        const totalCalories = itemcontroller.getTotalCalories();
+        //Show total calories
+        uicontroller.showTotalCalories(totalCalories);
+
+        event.preventDefault();
+    }
+
+    const handleDeleteButton=function (event) {
+        //get id of current element
+        const currentItem=itemcontroller.getCurrentItem();
+
+        itemcontroller.deleteItem(currentItem.id);
+
+        // console.log(`delete button : ${currentItem.id}`);
+
+        uicontroller.populateDataToUi(itemcontroller.logData().items);
+
+        const totalCalories = itemcontroller.getTotalCalories();
+        //Show total calories
+        uicontroller.showTotalCalories(totalCalories);
+
+
+
+        event.preventDefault();
+
+    }
+
+    //Operation to happen when user clicks on edit icon
+    const handleEditIcon = function (event) {
         //CHeck if user clicked on edit icon (using event delegation)
         if (event.target.classList.contains("edit-item")) {
             console.log("edit buttn clicked");
@@ -165,8 +264,8 @@ const App = (function (uicontroller, itemcontroller) {
             const i = parseInt((event.target.parentNode.parentNode.id).split("-")[1]);
             console.log(i);
             const foundItem = itemcontroller.findElementById(i);
-            console.log(foundItem);
-        //    set currentItem to foundItem
+            console.log(`find by id method ${foundItem.name}, ${foundItem.id},${foundItem.calories}`);
+            //    set currentItem to foundItem
             itemcontroller.setCurrentItem(foundItem);
             //To autpopulate field in UI
             uicontroller.updateItem(foundItem);
@@ -191,8 +290,6 @@ const App = (function (uicontroller, itemcontroller) {
             const totalCalories = itemcontroller.getTotalCalories();
             //Show total calories
             uicontroller.showTotalCalories(totalCalories);
-
-
 
         }
 
